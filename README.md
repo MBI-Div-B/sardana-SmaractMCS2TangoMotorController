@@ -1,4 +1,4 @@
-# sardana-MbiTangoMotorController
+# sardana-SmaractMCS2TangoMotorController
 Sardana contoller for SmarAct MCS2 Controller with up to three axis.
 
 You need to set the Tango device name for each axis of this generic controller by the axis_attribute: Tango_Device
