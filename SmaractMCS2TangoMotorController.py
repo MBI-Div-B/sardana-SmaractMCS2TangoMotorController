@@ -1,48 +1,46 @@
 from PyTango import DeviceProxy
 
-#from sardana import State, DataAccess
 from sardana.pool.controller import MotorController
 from sardana.pool.controller import Type, Access, Description, DataAccess
 
 
 class SmarActMCS2Controller(MotorController):
     MaxDevice = 99
-    
+
     axis_attributes = {
-        'Tango_Device' : {
+        'Tango_Device': {
             Type: str,
-            Description: 'The Tango Device'\
-                ' (e.g. domain/family/member)',
+            Description: 'The Tango Device'
+            ' (e.g. domain/family/member)',
             Access: DataAccess.ReadWrite
         },
-        'MoveMode' : {
+        'MoveMode': {
             Type: int,
-            Description: 'MoveMode setting'\
-                '0 = absolute, 1 = relative 2-4 = ??, higher value not valid.',
+            Description: 'MoveMode setting'
+            '0 = absolute, 1 = relative 2-4 = ??, higher value not valid.',
             Access: DataAccess.ReadWrite
         },
-        'StepFrequency' : {
+        'StepFrequency': {
             Type: int,
-            Description: 'StepFrequency setting'\
-                'Default = 1000',
+            Description: 'StepFrequency setting'
+            'Default = 1000',
             Access: DataAccess.ReadWrite
         },
     }
-    
+
     def __init__(self, inst, props, *args, **kwargs):
-        print('SmarAct Initialisation ...')
         super(SmarActMCS2Controller, self).__init__(
-            inst, props, *args, **kwargs)
-        
+                inst, props, *args, **kwargs)
+
         self._log.info('Initialized')
         # do some initialization
         self.axis_extra_pars = {}
-        print('SmarAct SUCCESS!')
 
     def AddDevice(self, axis):
         self._log.info('adding axis {:d}'.format(axis))
         self.axis_extra_pars[axis] = {}
         self.axis_extra_pars[axis]['Proxy'] = None
+        self.axis_extra_pars[axis]['target_position'] = 0
 
     def DeleteDevice(self, axis):
         self._log.info('delete axis {:d}'.format(axis))
@@ -51,31 +49,24 @@ class SmarActMCS2Controller(MotorController):
     def StateOne(self, axis):
         state = self.axis_extra_pars[axis]['Proxy'].command_inout("State")
         status = self.axis_extra_pars[axis]['Proxy'].command_inout("Status")
-#        switch_state = MotorController.NoLimitSwitch
-#        limit_plus = False
-#        limit_minus = False
-#        if 'endstop' in status:
-#            if self.axis_extra_pars[axis]['Proxy'].read_attribute("position").value >0:
-#                limit_plus = True
-#            else:
-#                limit_minus = True
-#
-#        if limit_plus:
-#            switch_state |= MotorController.UpperLimitSwitch
-#            state = State.Alarm
-#        elif limit_minus:
-#            switch_state |= MotorController.LowerLimitSwitch
-#            
-#        if (state != State.Moving) & (limit_plus | limit_minus):
-#            state = State.Alarm
-#        return state, status, switch_state
-        return state, status
+        target_position = self.axis_extra_pars[axis]['target_position']
+        switch_state = MotorController.NoLimitSwitch
+
+        if 'endstop' in status:
+            if self.axis_extra_pars[axis]['Proxy'].read_attribute("position").value \
+                    > target_position:
+                switch_state |= MotorController.LowerLimitSwitch
+            else:
+                switch_state |= MotorController.UpperLimitSwitch
+
+        return state, status, switch_state
 
     def ReadOne(self, axis):
         ret = self.axis_extra_pars[axis]['Proxy'].read_attribute("position").value
         return ret
-        
+
     def StartOne(self, axis, position):
+        self.axis_extra_pars[axis]['target_position'] = position
         self.axis_extra_pars[axis]['Proxy'].write_attribute("position", position)
 
     def StopOne(self, axis):
@@ -108,7 +99,7 @@ class SmarActMCS2Controller(MotorController):
         else:
             result = None
         return result
-    
+
     def SetAxisExtraPar(self, axis, name, value):
         if name == 'Tango_Device':
             self.axis_extra_pars[axis][name] = value
@@ -119,14 +110,14 @@ class SmarActMCS2Controller(MotorController):
                 self.axis_extra_pars[axis]['Proxy'] = None
                 raise e
         elif name == 'MoveMode':
-            result = self.axis_extra_pars[axis]['Proxy'].write_attribute("MoveMode",value)
+            result = self.axis_extra_pars[axis]['Proxy'].write_attribute("MoveMode", value)
         elif name == 'StepFrequency':
-            result = self.axis_extra_pars[axis]['Proxy'].write_attribute("StepFrequency",value)
+            result = self.axis_extra_pars[axis]['Proxy'].write_attribute("StepFrequency", value)
         else:
             result = None
-            
+        return result
+
     def GetAxisExtraPar(self, axis, name):
-        
         if name == 'MoveMode':
             result = self.axis_extra_pars[axis]['Proxy'].read_attribute("MoveMode").value
         elif name == 'StepFrequency':
@@ -134,39 +125,32 @@ class SmarActMCS2Controller(MotorController):
         else:
             result = None
         return result
-    
 
-#    def SendToCtrl(self, cmd):
-#        """
-#        Send custom native commands. The cmd is a space separated string
-#        containing the command information. Parsing this string one gets
-#        the command name and the following are the arguments for the given
-#        command i.e.command_name, [arg1, arg2...]
-#
-#        :param cmd: string
-#        :return: string (MANDATORY to avoid OMNI ORB exception)
-#        """
-#        # Get the process to send
-#        mode = cmd.split(' ')[0].lower()
-#        args = cmd.strip().split(' ')[1:]
-#
-#        if mode == 'homing':
-#            try:
-#                if len(args) == 2:
-#                    axis, direction = args
-#                    axis = int(axis)
-#                    direction = int(direction)
-#                else:
-#                    raise ValueError('Invalid number of arguments')
-#            except Exception as e:
-#                self._log.error(e)
-#
-#            self._log.info('Starting homing for axis {:d} in direction id {:d}'.format(axis, direction))
-#            try:
-#                if direction == 0:
-#                    self.axis_extra_pars[axis]['Proxy'].command_inout("homing_minus")
-#                else:
-#                    self.axis_extra_pars[axis]['Proxy'].command_inout("homing_plus")
-#            except Exception as e:
-#                self._log.error(e)
+    def SendToCtrl(self, cmd):
+        """
+        Send custom native commands. The cmd is a space separated string
+        containing the command information. Parsing this string one gets
+        the command name and the following are the arguments for the given
+        command i.e.command_name, [arg1, arg2...]
 
+        :param cmd: string
+        :return: string (MANDATORY to avoid OMNI ORB exception)
+        """
+        # Get the process to send
+        mode = cmd.split(' ')[0].lower()
+        args = cmd.strip().split(' ')[1:]
+
+        if mode == 'homing':
+            try:
+                if len(args) == 1:
+                    axis = int(args[0])
+                else:
+                    raise ValueError('Invalid number of arguments')
+            except Exception as e:
+                self._log.error(e)
+
+            self._log.info('Starting homing for axis {:d}'.format(axis))
+            try:
+                self.axis_extra_pars[axis]['Proxy'].command_inout("Home")
+            except Exception as e:
+                self._log.error(e)
