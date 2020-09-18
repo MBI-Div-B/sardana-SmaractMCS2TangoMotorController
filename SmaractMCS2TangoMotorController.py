@@ -115,7 +115,6 @@ class SmarActMCS2Controller(MotorController):
             result = self.axis_extra_pars[axis]['Proxy'].write_attribute("StepFrequency", value)
         else:
             result = None
-        return result
 
     def GetAxisExtraPar(self, axis, name):
         if name == 'MoveMode':
