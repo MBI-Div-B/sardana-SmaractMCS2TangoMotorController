@@ -122,7 +122,7 @@ class SmarActMCS2Controller(MotorController):
         elif name == 'StepFrequency':
             result = self.axis_extra_pars[axis]['Proxy'].read_attribute("StepFrequency").value
         else:
-            result = None
+            result = self.axis_extra_pars[axis][name]
         return result
 
     def SendToCtrl(self, cmd):
