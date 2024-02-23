@@ -6,6 +6,8 @@ Sardana contoller for SmarAct MCS2 Controller with multiple axis.
 http://svn.code.sf.net/p/tango-ds/code/DeviceClasses/Motion/MotorControllers/Smaract/SmarActMCS2Motor/
 http://svn.code.sf.net/p/tango-ds/code/DeviceClasses/Motion/MotorControllers/Smaract/SmarActMCS2Ctrl/
 
+Device Server code is also available on the [DESY gitlab server](https://gitlab.desy.de/tango-ds/deviceclasses/motion/motorcontrollers/Smaract)
+
 ## Configuration
 
 You need to set the Tango device name for each axis of this generic controller by the axis_attribute: Tango_Device
