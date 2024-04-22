@@ -1,5 +1,6 @@
 from PyTango import DeviceProxy
 
+from sardana import State
 from sardana.pool.controller import MotorController
 from sardana.pool.controller import Type, Access, Description, DataAccess
 
@@ -58,6 +59,9 @@ class SmarActMCS2Controller(MotorController):
                 switch_state |= MotorController.LowerLimitSwitch
             else:
                 switch_state |= MotorController.UpperLimitSwitch
+    
+        if ('Axis not homed' in status):
+            state = State.On
 
         return state, status, switch_state
 
