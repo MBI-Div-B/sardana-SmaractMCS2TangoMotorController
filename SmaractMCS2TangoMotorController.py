@@ -60,8 +60,8 @@ class SmarActMCS2Controller(MotorController):
             else:
                 switch_state |= MotorController.UpperLimitSwitch
     
-        if ('Axis not homed' in status):
-            state = State.On
+        if 'Axis not homed' in status:
+           state = State.On
 
         return state, status, switch_state
 
