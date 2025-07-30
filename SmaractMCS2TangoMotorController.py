@@ -4,7 +4,7 @@ from sardana.pool.controller import MotorController
 from sardana.pool.controller import Type, Access, Description, DataAccess
 
 
-class SmarActMCS2Controller(MotorController):
+class SmarActHCUController(MotorController):
     MaxDevice = 99
 
     axis_attributes = {
@@ -14,23 +14,10 @@ class SmarActMCS2Controller(MotorController):
             ' (e.g. domain/family/member)',
             Access: DataAccess.ReadWrite
         },
-        'MoveMode': {
-            Type: int,
-            Description: 'MoveMode setting'
-            '0 = absolute, 1 = relative 2-4 = ??, higher value not valid.',
-            Access: DataAccess.ReadWrite
-        },
-        'StepFrequency': {
-            Type: int,
-            Description: 'StepFrequency setting'
-            'Default = 1000',
-            Access: DataAccess.ReadWrite
-        },
     }
 
     def __init__(self, inst, props, *args, **kwargs):
-        super(SmarActMCS2Controller, self).__init__(
-                inst, props, *args, **kwargs)
+        super().__init__(inst, props, *args, **kwargs)
 
         self._log.info('Initialized')
         # do some initialization
@@ -52,13 +39,6 @@ class SmarActMCS2Controller(MotorController):
         target_position = self.axis_extra_pars[axis]['target_position']
         switch_state = MotorController.NoLimitSwitch
 
-        if 'endstop' in status:
-            if self.axis_extra_pars[axis]['Proxy'].read_attribute("position").value \
-                    > target_position:
-                switch_state |= MotorController.LowerLimitSwitch
-            else:
-                switch_state |= MotorController.UpperLimitSwitch
-
         return state, status, switch_state
 
     def ReadOne(self, axis):
@@ -73,14 +53,14 @@ class SmarActMCS2Controller(MotorController):
         self.axis_extra_pars[axis]['Proxy'].command_inout("stop")
 
     def AbortOne(self, axis):
-        self.axis_extra_pars[axis]['Proxy'].command_inout("abort")
+        self.axis_extra_pars[axis]['Proxy'].command_inout("stop")
 
     def SetAxisPar(self, axis, name, value):
         if self.axis_extra_pars[axis]['Proxy']:
             if name == 'velocity':
-                self.axis_extra_pars[axis]['Proxy'].write_attribute("Speed", value)
+                self.axis_extra_pars[axis]['Proxy'].write_attribute("MaxFrequency", int(value))
             elif name in ['acceleration', 'deceleration']:
-                self.axis_extra_pars[axis]['Proxy'].write_attribute("Acceleration", value)
+                pass
             elif name == 'step_per_unit':
                 self.axis_extra_pars[axis]['Proxy'].write_attribute("Conversion", value)
             else:
@@ -89,9 +69,9 @@ class SmarActMCS2Controller(MotorController):
     def GetAxisPar(self, axis, name):
         if self.axis_extra_pars[axis]['Proxy']:
             if name == 'velocity':
-                result = self.axis_extra_pars[axis]['Proxy'].read_attribute("Speed").value
+                result = self.axis_extra_pars[axis]['Proxy'].read_attribute("MaxFrequency").value
             elif name in ['acceleration', 'deceleration']:
-                result = self.axis_extra_pars[axis]['Proxy'].read_attribute("Acceleration").value
+                result = 0
             elif name == 'step_per_unit':
                 result = self.axis_extra_pars[axis]['Proxy'].read_attribute("Conversion").value
             else:
@@ -104,25 +84,18 @@ class SmarActMCS2Controller(MotorController):
         if name == 'Tango_Device':
             self.axis_extra_pars[axis][name] = value
             try:
-                self.axis_extra_pars[axis]['Proxy'] = DeviceProxy(value)
+                proxy = DeviceProxy(value)
+                self.axis_extra_pars[axis]['Proxy'] = proxy
+                self.axis_extra_pars[axis]['target_position'] = proxy.read_attribute("position")
                 self._log.info('axis {:d} DeviceProxy set to: {:s}'.format(axis, value))
             except Exception as e:
                 self.axis_extra_pars[axis]['Proxy'] = None
                 raise e
-        elif name == 'MoveMode':
-            result = self.axis_extra_pars[axis]['Proxy'].write_attribute("MoveMode", value)
-        elif name == 'StepFrequency':
-            result = self.axis_extra_pars[axis]['Proxy'].write_attribute("StepFrequency", value)
         else:
             result = None
 
     def GetAxisExtraPar(self, axis, name):
-        if name == 'MoveMode':
-            result = self.axis_extra_pars[axis]['Proxy'].read_attribute("MoveMode").value
-        elif name == 'StepFrequency':
-            result = self.axis_extra_pars[axis]['Proxy'].read_attribute("StepFrequency").value
-        else:
-            result = self.axis_extra_pars[axis][name]
+        result = self.axis_extra_pars[axis].get(name, None)
         return result
 
     def SendToCtrl(self, cmd):
